@@ -13,6 +13,7 @@ import {
 } from "@/components/viewer";
 import { getStlUrl } from "@/lib/api/files";
 import { FileItem } from "@/types/file";
+import { Card, CardHeader, CardContent } from "@/components/ui/Card";
 import path from "path";
 
 // Function to extract file information from path and metadata
@@ -27,23 +28,45 @@ async function getFileInfo(filePath: string): Promise<FileItem | null> {
   }
 }
 
+/**
+ * Helper function to ensure consistent URL encoding between pages
+ * This is crucial for back navigation to work properly
+ * @param path The path to encode
+ */
+function encodePathForUrl(path: string): string {
+  // First replace spaces with + to match the explorer format
+  return path.replace(/ /g, "+").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/&/g, "%26");
+}
+
+/**
+ * Page component for viewing STL files
+ */
 export default function ViewerPage() {
+  // Get URL parameters
   const searchParams = useSearchParams();
   const router = useRouter();
   const filePath = searchParams.get("path") || "";
   const stlUrl = getStlUrl(filePath);
 
+  // Generate a unique instance ID for this page render
+  // This ensures the StlViewer fully remounts when paths change
+  const [viewerInstanceId] = useState(() => `viewer-${Math.random().toString(36).substring(2, 9)}`);
+
   // Get the folder path to go back to
   const folderPath = filePath.split("/").slice(0, -1).join("/");
   const fileName = path.basename(filePath);
 
+  // Store the original, correctly encoded back path
+  const encodedBackPath = useRef(encodePathForUrl(folderPath));
+
   // Viewer state
   const [wireframe, setWireframe] = useState<boolean>(false);
   const [backgroundColor, setBackgroundColor] = useState<string>("#1a1e21");
-  const [modelColor, setModelColor] = useState<string>("#f3ca3c");
+  const [modelColor, setModelColor] = useState<string>("#6882AC");
   const [fileInfo, setFileInfo] = useState<FileItem | null>(null);
   const [modelStats, setModelStats] = useState<ModelStats | null>(null);
 
+  // Reference to the StlViewer component
   const viewerRef = useRef<StlViewerRef>(null);
 
   // Load file information once
@@ -63,9 +86,11 @@ export default function ViewerPage() {
     };
   }, [filePath]);
 
-  // Function to handle model loaded event - use useCallback to prevent recreation
+  // Handle model loaded event
   const handleModelLoaded = useCallback((stats: ModelStats | null) => {
-    setModelStats(stats);
+    if (stats) {
+      setModelStats(stats);
+    }
   }, []);
 
   // Function to reset camera to default position
@@ -92,25 +117,31 @@ export default function ViewerPage() {
   const handleBackClick = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
-      router.push(`/models?path=${encodeURIComponent(folderPath)}`);
+
+      // Use the consistent encoding strategy stored in ref
+      router.push(`/models?path=${encodedBackPath.current}`);
+
+      // Log the navigation for debugging
+      console.log(`Navigating to: /models?path=${encodedBackPath.current}`);
     },
-    [router, folderPath]
+    [router]
   );
 
   return (
-    <div className="min-h-screen bg-main-950">
+    <div className="min-h-screen bg-main-950 flex flex-col">
       <header className="bg-main-800 shadow">
-        <div className="container mx-auto px-4 py-4">
+        <div className="w-full px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <a
-                href={`/models?path=${encodeURIComponent(folderPath)}`}
+                href={`/models?path=${encodedBackPath.current}`}
                 onClick={handleBackClick}
-                className="mr-4 p-2 rounded-full text-main-700 hover:bg-main-100 dark:text-main-300 dark:hover:bg-main-700"
+                className="mr-4 p-2 rounded-full text-main-300 hover:bg-main-700"
+                aria-label="Back to folder"
               >
                 <ArrowLeft className="h-5 w-5" />
               </a>
-              <h1 className="text-xl font-bold text-main-900 dark:text-white">{fileName}</h1>
+              <h1 className="text-xl font-bold text-white">{fileName}</h1>
             </div>
 
             <button
@@ -124,43 +155,64 @@ export default function ViewerPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-3">
-            <div className="bg-white dark:bg-main-800 rounded-lg shadow overflow-hidden">
-              <StlViewer
-                key={stlUrl} /* Add a key to ensure proper remounting */
-                stlUrl={stlUrl}
-                height="1000px"
-                backgroundColor={backgroundColor}
-                modelColor={modelColor}
-                wireframe={wireframe}
-                ref={viewerRef}
-                onModelLoaded={handleModelLoaded}
-              />
-            </div>
+      <main className="flex-1 p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-9rem)]">
+          <div className="lg:col-span-3 h-full">
+            <Card className="h-full flex flex-col">
+              <div className="flex-1">
+                {/* 
+                  Key with viewerInstanceId ensures complete remount
+                  when switching between models
+                */}
+                <StlViewer
+                  key={viewerInstanceId}
+                  stlUrl={stlUrl}
+                  height="100%"
+                  backgroundColor={backgroundColor}
+                  modelColor={modelColor}
+                  wireframe={wireframe}
+                  ref={viewerRef}
+                  onModelLoaded={handleModelLoaded}
+                  className="h-full"
+                />
+              </div>
+            </Card>
           </div>
 
           <div className="space-y-6">
-            <ViewerSettings
-              wireframe={wireframe}
-              setWireframe={setWireframe}
-              backgroundColor={backgroundColor}
-              setBackgroundColor={setBackgroundColor}
-              modelColor={modelColor}
-              setModelColor={setModelColor}
-              resetCamera={resetCamera}
-              downloadStl={downloadStl}
-            />
+            <Card>
+              <CardHeader>
+                <h2 className="text-lg font-medium text-main-50">Viewer Settings</h2>
+              </CardHeader>
+              <CardContent>
+                <ViewerSettings
+                  wireframe={wireframe}
+                  setWireframe={setWireframe}
+                  backgroundColor={backgroundColor}
+                  setBackgroundColor={setBackgroundColor}
+                  modelColor={modelColor}
+                  setModelColor={setModelColor}
+                  resetCamera={resetCamera}
+                  downloadStl={downloadStl}
+                />
+              </CardContent>
+            </Card>
 
             {fileInfo && (
-              <ViewerInfo
-                fileName={fileInfo.name}
-                fileSize={fileInfo.size}
-                modified={fileInfo.modified}
-                triangleCount={modelStats?.triangleCount}
-                dimensions={modelStats?.dimensions}
-              />
+              <Card>
+                <CardHeader>
+                  <h2 className="text-lg font-medium text-main-50">Model Information</h2>
+                </CardHeader>
+                <CardContent>
+                  <ViewerInfo
+                    fileName={fileInfo.name}
+                    fileSize={fileInfo.size}
+                    modified={fileInfo.modified}
+                    triangleCount={modelStats?.triangleCount}
+                    dimensions={modelStats?.dimensions}
+                  />
+                </CardContent>
+              </Card>
             )}
           </div>
         </div>
