@@ -39,7 +39,10 @@ export function ViewerSettings({
           </button>
 
           <button
-            onClick={() => setWireframe(true)}
+            onClick={() => {
+              console.log("Setting wireframe mode to true");
+              setWireframe(true);
+            }}
             className={`flex items-center px-3 py-2 rounded ${
               wireframe
                 ? "bg-highlight-800 text-highlight-200 border border-highlight-600"

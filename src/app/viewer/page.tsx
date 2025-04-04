@@ -34,8 +34,8 @@ async function getFileInfo(filePath: string): Promise<FileItem | null> {
  * @param path The path to encode
  */
 function encodePathForUrl(path: string): string {
-  // First replace spaces with + to match the explorer format
-  return path.replace(/ /g, "+").replace(/\(/g, "%28").replace(/\)/g, "%29").replace(/&/g, "%26");
+  // Use encodeURIComponent instead of custom replacements
+  return encodeURIComponent(path);
 }
 
 /**
@@ -118,13 +118,14 @@ export default function ViewerPage() {
     (e: React.MouseEvent) => {
       e.preventDefault();
 
-      // Use the consistent encoding strategy stored in ref
-      router.push(`/models?path=${encodedBackPath.current}`);
+      // Add a flag to ensure explorer hooks synchronize correctly
+      const params = new URLSearchParams();
+      params.set("path", folderPath); // Use raw path
+      params.set("source", "viewer"); // Add source param to help hooks coordinate
 
-      // Log the navigation for debugging
-      console.log(`Navigating to: /models?path=${encodedBackPath.current}`);
+      router.push(`/models?${params.toString()}`);
     },
-    [router]
+    [router, folderPath]
   );
 
   return (

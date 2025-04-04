@@ -148,6 +148,24 @@ export const StlViewer = forwardRef<StlViewerRef, StlViewerProps>(
       }
     }, [backgroundColor, modelColor, wireframe, stlUrl]);
 
+    // Ensure the wireframe prop change is properly detected and logged
+    useEffect(() => {
+      if (!managerRef.current) return;
+
+      console.log("Updating viewer config. Wireframe:", wireframe);
+
+      managerRef.current.updateConfig({
+        backgroundColor,
+        modelColor,
+        wireframe,
+      });
+
+      // Force material update regardless of what's in the config
+      if (managerRef.current.forceWireframeUpdate) {
+        managerRef.current.forceWireframeUpdate(wireframe);
+      }
+    }, [backgroundColor, modelColor, wireframe, stlUrl]);
+
     // Expose methods via ref
     useImperativeHandle(
       ref,

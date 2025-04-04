@@ -3,15 +3,18 @@
 
 import React, { useState, useEffect } from "react";
 import { useFileExplorer } from "@/hooks/useFileExplorer";
+import { useFileSelection } from "@/hooks/useFileSelection";
 import { Topbar } from "@/components/layout/Topbar";
 import { ExplorerContainer } from "@/components/explorer/ExplorerContainer";
 import { MetadataTopbar } from "@/components/metadata/MetadataPanel";
 import { MetadataEditor } from "@/components/metadata/MetadataEditor";
+import { BatchMetadataEditor } from "@/components/metadata/MetadataEditor/BatchMetadataEditor";
 import { getFileMetadata } from "@/lib/api/metadata";
 import { FileMetadata } from "@/components/metadata/metadata.types";
 import { SearchBar, SearchResults } from "@/components/search";
 import { BreadcrumbWithSearch } from "@/components/explorer/BreadcrumbWithSearch";
 import { useSearch } from "@/components/search/useSearch";
+import { Edit } from "lucide-react";
 
 export default function ModelsPage() {
   // Use our custom hooks
@@ -25,6 +28,18 @@ export default function ModelsPage() {
     navigateUp,
     breadcrumbs,
   } = useFileExplorer();
+
+  const {
+    selectedItems,
+    selectedItemsArray,
+    selectedCount,
+    selectionMode,
+    toggleSelectionMode,
+    toggleItemSelection,
+    clearSelection,
+    selectAll,
+    isSelected,
+  } = useFileSelection();
 
   const {
     query,
@@ -49,6 +64,9 @@ export default function ModelsPage() {
   const [editorOpen, setEditorOpen] = useState<boolean>(false);
   const [editingItemPath, setEditingItemPath] = useState<string | null>(null);
   const [editingItemName, setEditingItemName] = useState<string>("");
+
+  // State for batch edit modal
+  const [batchEditModalOpen, setBatchEditModalOpen] = useState<boolean>(false);
 
   // Load current folder metadata when path changes
   useEffect(() => {
@@ -137,7 +155,7 @@ export default function ModelsPage() {
     <main className="min-h-screen flex flex-col bg-main-950">
       {/* Fixed position top bars */}
       <div className="flex flex-col w-full">
-        {/* Top Navigation Bar */}
+        {/* Top Navigation Bar with selection toggle */}
         <Topbar
           currentPath={currentPath}
           breadcrumbs={
@@ -151,20 +169,24 @@ export default function ModelsPage() {
           loading={loading || isSearching}
           onNavigateUp={navigateUp}
           onRefresh={handleRefresh}
+          selectionMode={selectionMode}
+          onToggleSelectionMode={toggleSelectionMode}
         />
 
-        {/* Search Bar */}
-        <SearchBar
-          onSearch={handleSearch}
-          availableTags={availableTags}
-          isSearching={isSearching}
-          initialQuery={query}
-          initialTags={tags}
-          initialFileType={fileType}
-        />
+        {/* Search Bar - only show when not in selection mode */}
+        {!selectionMode && (
+          <SearchBar
+            onSearch={handleSearch}
+            availableTags={availableTags}
+            isSearching={isSearching}
+            initialQuery={query}
+            initialTags={tags}
+            initialFileType={fileType}
+          />
+        )}
 
-        {/* Folder Metadata Bar - only show when not in search mode */}
-        {!isInSearchMode && (
+        {/* Folder Metadata Bar - only show when not in search mode and not in selection mode */}
+        {!isInSearchMode && !selectionMode && (
           <MetadataTopbar
             currentPath={currentPath}
             metadata={folderMetadata}
@@ -176,7 +198,7 @@ export default function ModelsPage() {
 
       {/* Main Content Area */}
       {isInSearchMode ? (
-        // Search Results
+        // Search Results with selection support
         <div className="px-6">
           <SearchResults
             results={results}
@@ -188,25 +210,60 @@ export default function ModelsPage() {
             onFolderEditClick={handleFolderEditClick}
             onClearSearch={clearSearch}
             isLoading={isSearching}
+            selectionMode={selectionMode}
+            selectedItems={selectedItems}
+            onToggleSelection={toggleItemSelection}
+            isSelected={isSelected}
           />
         </div>
       ) : (
-        // Regular Explorer
+        // Regular Explorer with selection support
         <ExplorerContainer
           items={items}
           loading={loading}
           error={error}
           currentPath={currentPath}
-          selectedItemPath={selectedItemPath}
+          selectedItemPath={selectionMode ? null : selectedItemPath}
           navigateToFolder={navigateToFolder}
           onFileInfoClick={handleFileInfoClick}
           onFolderInfoClick={handleFolderInfoClick}
           onFileEditClick={handleFileEditClick}
           onFolderEditClick={handleFolderEditClick}
+          loadItems={loadItems}
+          selectionMode={selectionMode}
+          selectedItems={selectedItems}
+          onToggleSelectionMode={toggleSelectionMode}
+          onToggleSelection={toggleItemSelection}
+          onSelectAll={selectAll}
+          onClearSelection={clearSelection}
+          isSelected={isSelected}
         />
       )}
 
-      {/* Metadata Editor Modal */}
+      {/* Batch edit floating button - only show when in selection mode with items selected */}
+      {selectionMode && selectedCount > 0 && (
+        <button
+          className="fixed bottom-6 right-6 px-4 py-3 bg-highlight-600 text-white rounded-lg shadow-lg hover:bg-highlight-700 flex items-center"
+          onClick={() => setBatchEditModalOpen(true)}
+        >
+          <Edit className="h-4 w-4 mr-2" />
+          Edit {selectedCount} selected items
+        </button>
+      )}
+
+      {/* Batch Edit Modal */}
+      <BatchMetadataEditor
+        items={selectedItemsArray}
+        isOpen={batchEditModalOpen}
+        onClose={() => setBatchEditModalOpen(false)}
+        onSaved={() => {
+          clearSelection();
+          toggleSelectionMode();
+          loadItems(currentPath);
+        }}
+      />
+
+      {/* Metadata Editor Modal (for single item editing) */}
       {editorOpen && editingItemPath && (
         <MetadataEditor
           filePath={editingItemPath}

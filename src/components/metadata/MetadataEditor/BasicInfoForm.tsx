@@ -13,6 +13,7 @@ interface BasicInfoFormProps {
   onInputChange: <T>(name: string, value: T) => void;
   availableTags: string[];
   availableCategories: string[];
+  disabled?: boolean; // Add disabled prop
 }
 
 export function BasicInfoForm({
@@ -24,6 +25,7 @@ export function BasicInfoForm({
   onInputChange,
   availableTags,
   availableCategories,
+  disabled = false, // Default to not disabled
 }: BasicInfoFormProps) {
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
   const [newCategoryValue, setNewCategoryValue] = useState("");
@@ -124,7 +126,12 @@ export function BasicInfoForm({
         <label htmlFor="tags" className="block text-sm font-medium text-main-300 mb-1">
           Tags
         </label>
-        <TagInput value={tags} onChange={onTagsChange} suggestions={availableTags} />
+        <TagInput
+          value={tags}
+          onChange={onTagsChange}
+          suggestions={availableTags}
+          disabled={disabled}
+        />
       </div>
 
       {/* Category */}
@@ -142,17 +149,22 @@ export function BasicInfoForm({
                 placeholder="Enter new category name"
                 autoFocus
                 className="w-full p-3 bg-main-800/80 text-main-100 border border-main-700 rounded-lg focus:ring-2 focus:ring-highlight-500 focus:border-transparent outline-none transition-all duration-200"
+                disabled={disabled}
               />
               <div className="flex">
                 <button
                   onClick={handleSaveNewCategory}
-                  className="px-4 py-2 bg-highlight-600 rounded-md text-white hover:bg-highlight-700 transition-colors"
+                  className={`px-4 py-2 bg-highlight-600 rounded-md text-white hover:bg-highlight-700 transition-colors ${
+                    disabled ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  disabled={disabled}
                 >
                   Save
                 </button>
                 <button
                   onClick={handleCancelNewCategory}
                   className="px-4 py-2 bg-main-700 text-main-300 rounded-r-lg hover:bg-main-600 transition-colors"
+                  disabled={disabled}
                 >
                   Cancel
                 </button>
@@ -174,6 +186,7 @@ export function BasicInfoForm({
               fullWidth={true}
               options={localCategoryOptions}
               placeholder="Select category"
+              disabled={disabled}
             />
           )}
         </div>
@@ -191,7 +204,10 @@ export function BasicInfoForm({
           value={description || ""}
           onChange={(e) => onInputChange("description", e.target.value)}
           placeholder="Enter a description for this model..."
-          className="w-full p-3 bg-main-800/80 text-main-100 border border-main-700 rounded-lg focus:ring-2 focus:ring-highlight-500 focus:border-transparent outline-none transition-all duration-200"
+          className={`w-full p-3 bg-main-800/80 text-main-100 border border-main-700 rounded-lg focus:ring-2 focus:ring-highlight-500 focus:border-transparent outline-none transition-all duration-200 ${
+            disabled ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+          disabled={disabled}
         />
       </div>
     </div>

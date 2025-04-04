@@ -108,12 +108,12 @@ export class StlViewerManager {
     };
 
     // Apply background color if renderer exists
-    if (this.renderer && this.scene && config.backgroundColor) {
-      this.scene.background = new THREE.Color(this.config.backgroundColor);
+    if (this.model && (config.modelColor || config.wireframe !== undefined)) {
+      this.updateModelMaterial();
     }
 
     // Apply model color and wireframe if model exists
-    if (this.model && (config.modelColor || config.wireframe !== undefined)) {
+    if (this.model && (config.modelColor !== undefined || config.wireframe !== undefined)) {
       this.updateModelMaterial();
     }
   }
@@ -480,20 +480,44 @@ export class StlViewerManager {
     const keyLight = new THREE.DirectionalLight("#ffffff", 1);
     keyLight.position.set(5, 8, 4);
     keyLight.castShadow = true;
+
+    // Improve shadow map quality
+    keyLight.shadow.camera.near = 0.1;
+    keyLight.shadow.camera.far = 50;
+    keyLight.shadow.camera.left = -15;
+    keyLight.shadow.camera.right = 15;
+    keyLight.shadow.camera.top = 15;
+    keyLight.shadow.camera.bottom = -15;
+
+    // These parameters are critical for self-shadows:
+    keyLight.shadow.bias = -0.0003; // Slightly reduced from -0.0005
+    keyLight.shadow.normalBias = 0.02; // Add this to improve shadow quality on sloped surfaces
+
+    // Higher resolution shadow maps for finer detail
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+
     this.scene.add(keyLight);
 
-    // Fill light (softer light from opposite side)
+    // Second directional light to soften shadows
     const fillLight = new THREE.DirectionalLight("#e6e6ff", 0.3);
     fillLight.position.set(-6, 3, 1);
+    // Make the fill light cast softer shadows
+    fillLight.castShadow = true;
+    fillLight.shadow.mapSize.width = 1024;
+    fillLight.shadow.mapSize.height = 1024;
+    fillLight.shadow.camera.near = 0.1;
+    fillLight.shadow.camera.far = 30;
+    fillLight.shadow.camera.left = -10;
+    fillLight.shadow.camera.right = 10;
+    fillLight.shadow.camera.top = 10;
+    fillLight.shadow.camera.bottom = -10;
+    fillLight.shadow.bias = -0.0002;
+
     this.scene.add(fillLight);
 
-    // Rim light (back light for edge highlighting)
-    const rimLight = new THREE.DirectionalLight("#FFCC8B", 0.4);
-    rimLight.position.set(0, 5, -7);
-    this.scene.add(rimLight);
-
-    // Ambient light
-    const ambientLight = new THREE.AmbientLight("#222233", 0.2);
+    // Keep ambient light low for better shadow contrast
+    const ambientLight = new THREE.AmbientLight("#222233", 0.15); // Even lower
     this.scene.add(ambientLight);
   }
 
@@ -748,11 +772,58 @@ export class StlViewerManager {
           m.color.set(this.config.modelColor);
           m.wireframe = this.config.wireframe;
           m.needsUpdate = true;
+        } else if (
+          m instanceof THREE.MeshBasicMaterial ||
+          m instanceof THREE.MeshPhongMaterial ||
+          m instanceof THREE.MeshLambertMaterial
+        ) {
+          m.wireframe = this.config.wireframe;
+          if ("color" in m) m.color.set(this.config.modelColor);
+          m.needsUpdate = true;
         }
       });
     } else if (material instanceof THREE.MeshStandardMaterial) {
       material.color.set(this.config.modelColor);
       material.wireframe = this.config.wireframe;
+      material.needsUpdate = true;
+    } else if (
+      material instanceof THREE.MeshBasicMaterial ||
+      material instanceof THREE.MeshPhongMaterial ||
+      material instanceof THREE.MeshLambertMaterial
+    ) {
+      material.wireframe = this.config.wireframe;
+      if ("color" in material) material.color.set(this.config.modelColor);
+      material.needsUpdate = true;
+    }
+  }
+
+  // Add to src/components/viewer/ThreeJsManager.ts
+  public forceWireframeUpdate(wireframeEnabled: boolean): void {
+    if (!this.model) return;
+
+    console.log("Forcing wireframe update:", wireframeEnabled);
+
+    const material = this.model.material;
+
+    if (Array.isArray(material)) {
+      material.forEach((m) => {
+        if (
+          m instanceof THREE.MeshBasicMaterial ||
+          m instanceof THREE.MeshStandardMaterial ||
+          m instanceof THREE.MeshPhongMaterial ||
+          m instanceof THREE.MeshLambertMaterial
+        ) {
+          m.wireframe = wireframeEnabled;
+          m.needsUpdate = true;
+        }
+      });
+    } else if (
+      material instanceof THREE.MeshBasicMaterial ||
+      material instanceof THREE.MeshStandardMaterial ||
+      material instanceof THREE.MeshPhongMaterial ||
+      material instanceof THREE.MeshLambertMaterial
+    ) {
+      material.wireframe = wireframeEnabled;
       material.needsUpdate = true;
     }
   }

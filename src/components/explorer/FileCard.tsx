@@ -12,12 +12,19 @@ interface FileCardProps {
   file: FileItem;
   onInfoClick?: () => void;
   onEditClick?: () => void;
+  // New selection-related props
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionToggle?: (file: FileItem) => void;
 }
 
 export const FileCard = React.memo(function FileCard({
   file,
   onInfoClick,
   onEditClick,
+  selectionMode,
+  isSelected,
+  onSelectionToggle,
 }: FileCardProps) {
   const extension = file.extension.toLowerCase();
   const previewUrl = getPreviewUrl(file.path);
@@ -71,27 +78,44 @@ export const FileCard = React.memo(function FileCard({
     return <FileIcon className="h-24 w-24 text-main-400" />;
   };
 
-  return (
-    <BaseCard onInfoClick={onInfoClick} onEditClick={onEditClick}>
-      <Link href={fileRoute} className="block">
-        <div className="aspect-square relative bg-main-700 flex items-center justify-center overflow-hidden">
-          {renderFileIcon()}
-        </div>
+  // Wrap content in Link unless in selection mode
+  const cardContent = (
+    <>
+      <div className="aspect-square relative bg-main-700 flex items-center justify-center overflow-hidden">
+        {renderFileIcon()}
+      </div>
 
-        <div className="p-3">
-          <div className="flex items-start">
-            <div className="min-w-0 flex-1">
-              <h3 className="text-sm font-medium text-white truncate">{file.name}</h3>
-              <p className="text-xs text-main-400 mt-1">
-                {formatFileSize(file.size)} • {new Date(file.modified).toLocaleDateString()}
-              </p>
-            </div>
-            <div className="ml-2 flex-shrink-0 uppercase text-xs font-medium rounded bg-main-700 px-2 py-1">
-              {file.extension}
-            </div>
+      <div className="p-3">
+        <div className="flex items-start">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-sm font-medium text-white truncate">{file.name}</h3>
+            <p className="text-xs text-main-400 mt-1">
+              {formatFileSize(file.size)} • {new Date(file.modified).toLocaleDateString()}
+            </p>
+          </div>
+          <div className="ml-2 flex-shrink-0 uppercase text-xs font-medium rounded bg-main-700 px-2 py-1">
+            {file.extension}
           </div>
         </div>
-      </Link>
+      </div>
+    </>
+  );
+
+  return (
+    <BaseCard
+      onInfoClick={onInfoClick}
+      onEditClick={onEditClick}
+      selectionMode={selectionMode}
+      isSelected={isSelected}
+      onSelectionToggle={onSelectionToggle ? () => onSelectionToggle(file) : undefined}
+    >
+      {selectionMode ? (
+        cardContent
+      ) : (
+        <Link href={fileRoute} className="block">
+          {cardContent}
+        </Link>
+      )}
     </BaseCard>
   );
 });

@@ -11,6 +11,10 @@ interface FolderCardProps {
   onClick: (path: string) => void;
   onInfoClick?: () => void;
   onEditClick?: () => void;
+  // New selection-related props
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelectionToggle?: (folder: FolderItem) => void;
 }
 
 export const FolderCard = React.memo(function FolderCard({
@@ -18,10 +22,15 @@ export const FolderCard = React.memo(function FolderCard({
   onClick,
   onInfoClick,
   onEditClick,
+  selectionMode,
+  isSelected,
+  onSelectionToggle,
 }: FolderCardProps) {
   // Handle folder click
   const handleClick = () => {
-    onClick(folder.path);
+    if (!selectionMode) {
+      onClick(folder.path);
+    }
   };
 
   // Determine if we have an image preview
@@ -40,7 +49,14 @@ export const FolderCard = React.memo(function FolderCard({
   }, [folder.previewPath]);
 
   return (
-    <BaseCard onClick={handleClick} onInfoClick={onInfoClick} onEditClick={onEditClick}>
+    <BaseCard
+      onClick={handleClick}
+      onInfoClick={onInfoClick}
+      onEditClick={onEditClick}
+      selectionMode={selectionMode}
+      isSelected={isSelected}
+      onSelectionToggle={onSelectionToggle ? () => onSelectionToggle(folder) : undefined}
+    >
       <div className="aspect-square relative bg-main-700 flex items-center justify-center overflow-hidden">
         {isImagePreview ? (
           <Image

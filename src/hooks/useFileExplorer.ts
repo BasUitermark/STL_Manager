@@ -23,7 +23,17 @@ export function useFileExplorer() {
   // Parse path from URL on initial load
   useEffect(() => {
     const pathParam = searchParams.get("path") || "";
-    setCurrentPath(pathParam);
+    const source = searchParams.get("source");
+
+    // Force a refresh if coming from viewer
+    if (source === "viewer") {
+      setCurrentPath(""); // Clear first
+      setTimeout(() => {
+        setCurrentPath(pathParam); // Then set with delay
+      }, 10);
+    } else {
+      setCurrentPath(pathParam);
+    }
   }, [searchParams]);
 
   // Load files and folders for the current path

@@ -13,6 +13,11 @@ interface ExplorerProps {
   onFolderInfoClick?: (path: string) => void;
   onFileEditClick?: (path: string, name: string) => void;
   onFolderEditClick?: (path: string, name: string) => void;
+  // New selection-related props
+  selectionMode?: boolean;
+  selectedItems?: Record<string, FileSystemItem>;
+  onToggleSelection?: (item: FileSystemItem) => void;
+  isSelected?: (path: string) => boolean;
 }
 
 export function Explorer({
@@ -23,6 +28,10 @@ export function Explorer({
   onFolderInfoClick,
   onFileEditClick,
   onFolderEditClick,
+  // Selection props
+  selectionMode = false,
+  onToggleSelection,
+  isSelected = () => false,
 }: ExplorerProps) {
   // Memoize folders and files to avoid unnecessary filtering on each render
   const folders = useMemo(() => items.filter(isFolderItem) as FolderItem[], [items]);
@@ -58,6 +67,9 @@ export function Explorer({
                       ? () => onFolderEditClick(folder.path, folder.name)
                       : undefined
                   }
+                  selectionMode={selectionMode}
+                  isSelected={isSelected(folder.path)}
+                  onSelectionToggle={onToggleSelection}
                 />
               </div>
             ))}
@@ -80,6 +92,9 @@ export function Explorer({
                   onEditClick={
                     onFileEditClick ? () => onFileEditClick(file.path, file.name) : undefined
                   }
+                  selectionMode={selectionMode}
+                  isSelected={isSelected(file.path)}
+                  onSelectionToggle={onToggleSelection}
                 />
               </div>
             ))}

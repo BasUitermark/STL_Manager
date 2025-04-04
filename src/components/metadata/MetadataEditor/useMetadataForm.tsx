@@ -6,6 +6,7 @@ import { getFileMetadata, getAllTags, getAllCategories } from "@/lib/api/metadat
 export interface UseMetadataFormProps {
   filePath: string;
   fileName: string;
+  skipLoad?: boolean; // New option to skip loading existing metadata
 }
 
 export interface UseMetadataFormReturn {
@@ -22,6 +23,7 @@ export interface UseMetadataFormReturn {
 export function useMetadataForm({
   filePath,
   fileName,
+  skipLoad = false,
 }: UseMetadataFormProps): UseMetadataFormReturn {
   const [metadata, setMetadata] = useState<MetadataInput>({
     filePath,
@@ -36,40 +38,47 @@ export function useMetadataForm({
     printSettings: {},
   });
 
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(!skipLoad);
   const [error, setError] = useState<string | null>(null);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
 
-  // Fetch existing metadata if available
+  // Fetch existing metadata if available (and not skipped)
   useEffect(() => {
     async function loadData() {
       try {
-        setLoading(true);
         setError(null);
-
-        // Load existing metadata
-        const existingMetadata = await getFileMetadata(filePath);
-        if (existingMetadata) {
-          setMetadata({
-            filePath: existingMetadata.filePath,
-            fileName: existingMetadata.fileName,
-            tags: existingMetadata.tags,
-            category: existingMetadata.category,
-            description: existingMetadata.description || "",
-            resin: existingMetadata.resin || "",
-            layerHeight: existingMetadata.layerHeight,
-            supportsNeeded: existingMetadata.supportsNeeded || false,
-            notes: existingMetadata.notes || "",
-            printSettings: existingMetadata.printSettings || {},
-          });
-        }
 
         // Load available tags and categories
         const [tags, categories] = await Promise.all([getAllTags(), getAllCategories()]);
-
         setAvailableTags(tags);
         setAvailableCategories(categories);
+
+        // Skip loading metadata if requested
+        if (skipLoad) {
+          setLoading(false);
+          return;
+        }
+
+        // Load existing metadata if filePath is provided
+        if (filePath) {
+          setLoading(true);
+          const existingMetadata = await getFileMetadata(filePath);
+          if (existingMetadata) {
+            setMetadata({
+              filePath: existingMetadata.filePath,
+              fileName: existingMetadata.fileName,
+              tags: existingMetadata.tags,
+              category: existingMetadata.category,
+              description: existingMetadata.description || "",
+              resin: existingMetadata.resin || "",
+              layerHeight: existingMetadata.layerHeight,
+              supportsNeeded: existingMetadata.supportsNeeded || false,
+              notes: existingMetadata.notes || "",
+              printSettings: existingMetadata.printSettings || {},
+            });
+          }
+        }
       } catch (err) {
         console.error("Error loading metadata:", err);
         setError("Failed to load metadata");
@@ -79,7 +88,7 @@ export function useMetadataForm({
     }
 
     loadData();
-  }, [filePath]);
+  }, [filePath, skipLoad]);
 
   // Generic input handler
   const handleInputChange = <T,>(field: string, value: T): void => {
